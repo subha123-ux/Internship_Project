@@ -1,0 +1,201 @@
+
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>AI Chatbot</title>
+    <style>
+        body {
+            font-family: Arial;
+            background-color: #f2f2f2;
+            padding: 20px;
+        }
+
+        h2 {
+            text-align: center;
+            color: #333;
+        }
+
+        .chat-box {
+            max-width: 600px;
+            background: white;
+            margin: auto;
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        #chat-log {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 10px;
+            background: #fff;
+        }
+
+        .message {
+            margin: 10px 0;
+            padding: 5px;
+            border-radius: 5px;
+        }
+
+        .user {
+            background-color: #e0f7fa;
+            color: green;
+            text-align: left;
+        }
+
+        .bot {
+            background-color: #ffe0b2;
+            color: blue;
+            text-align: left;
+        }
+
+        .input-area {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+        }
+
+        input:focus {
+            background-color: burlywood;
+        }
+
+        button {
+            padding: 10px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        @keyframes blink {
+            0% {
+                background-color: #4CAF50;
+            }
+
+            50% {
+                background-color: #a5d6a7;
+            }
+
+            100% {
+                background-color: #4CAF50;
+            }
+        }
+
+        button.clicked {
+            animation: blink 0.3s ease;
+        }
+
+        @media (max-width: 600px) {
+            .input-area {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            input[type="text"],
+            button {
+                width: 100%;
+                margin-bottom: 10px;
+            }
+
+            button {
+                font-size: 16px;
+            }
+
+            #chat-log {
+                max-height: 300px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="chat-box">
+        <h2>AI Chatbot</h2>
+        <div id="chat-log"></div>
+        <div class="input-area">
+            <input type="text" id="user-input" placeholder="Ask me something...">
+            <button onclick="startVoice()"><img src="https://www.svgrepo.com/show/308709/microphone-speak-say-tell.svg" alt="" height="15px" width="15px"></button>
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script>
+        function sendMessage() {
+            const input = document.getElementById("user-input");
+            const message = input.value.trim();
+            const chatLog = document.getElementById("chat-log");
+            const button = document.querySelector("button");
+
+            if (!message) return;
+
+            // Add blink animation
+            button.classList.add("clicked");
+            setTimeout(() => button.classList.remove("clicked"), 300);
+
+            const userTime = new Date().toLocaleString();
+            chatLog.innerHTML += `<div class="message user"><strong>You :</strong> ${message}</div>`;
+            input.value = "";
+
+            fetch("/ask", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ message: message })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    chatLog.innerHTML += `<div class="message bot"><strong>Bot :</strong> ${data.response}</div>`;
+                    chatLog.scrollTop = chatLog.scrollHeight;
+
+                    // Speak the bot's reply aloud
+                    const utter = new SpeechSynthesisUtterance(data.response);
+                    speechSynthesis.speak(utter);
+                })
+                .catch(err => {
+                    chatLog.innerHTML += `<div class="message bot"><strong>Bot:</strong> Error occurred.</div>`;
+                });
+        }
+
+        const recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const speech = recognition ? new recognition() : null;
+
+        function startVoice() {
+            if (!speech) {
+                alert("Your browser doesn't support voice input.");
+                return;
+            }
+
+            speech.start();
+
+            speech.onstart = () => {
+                console.log("Voice recognition started...");
+            };
+
+            speech.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                document.getElementById("user-input").value = transcript;
+                sendMessage();
+            };
+
+            speech.onerror = (event) => {
+                console.error("Voice error:", event.error);
+            };
+        }
+    </script>
+</body>
+
+</html>
